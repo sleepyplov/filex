@@ -1,9 +1,7 @@
 import os
 
-BASEDIR = os.path.abspath(os.path.dirname(__file__))
-
-
 class Config(object):
+    BASEDIR = os.path.abspath(os.path.dirname(__file__))
     DEBUG = False
     TESTING = False
     CSRF_ENABLED = True
@@ -13,9 +11,12 @@ class Config(object):
 
 
 class ProductionConfig(Config):
+    ENV = 'production'
     DEBUG = False
+    SECRET_KEY = os.environ.get('SECRET_KEY')
 
 
 class DevelopmentConfig(Config):
+    ENV = 'development'
     DEVELOPMENT = True
     DEBUG = True
