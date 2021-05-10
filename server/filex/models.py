@@ -8,16 +8,16 @@ from . import db
 
 class User(db.Model):
     __tablename__ = 'users'
-    pk = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String())
-    password = db.Column(db.String())
+    pk = db.Column(db.Integer, primary_key=True, nullable=False)
+    name = db.Column(db.String(), unique=True, nullable=False)
+    password = db.Column(db.String(), nullable=False)
 
     def __init__(self, name, password):
         self.name = name
         self.password = generate_password_hash(password)
 
     def __repr__(self):
-        return '<User #{0} {1}>'.format(self.id, self.name)
+        return '<User #{0} {1}>'.format(self.pk, self.name)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -39,9 +39,39 @@ class User(db.Model):
     @staticmethod
     def decode_token(token):
         try:
+            if BlacklistToken.check_blacklist(token):
+                return {
+                    'error': 'Token is blacklisted.'
+                }
             payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-            return payload['sub']
-        except jwt.ExpiredSignatureError as e:
-            raise e
-        except jwt.InvalidTokenError as e:
-            raise e
+            return payload
+        except jwt.ExpiredSignatureError:
+            return {
+                'error': 'Token expired.'
+            }
+        except jwt.InvalidTokenError:
+            return {
+                'error': 'Invalid token.'
+            }
+
+
+class BlacklistToken(db.Model):
+    __tablename__ = 'blacklist_tokens'
+
+    pk = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String, unique=True, nullable=False)
+    blacklisted_on = db.Column(db.DateTime, nullable=True)
+
+    def __init__(self, token):
+        self.token = token
+        self.blacklisted_on = datetime.datetime.now()
+    
+    def __repr__(self):
+        return '<Token {}'.format(self.token)
+    
+    @staticmethod
+    def check_blacklist(token):
+        token = BlacklistToken.query.filter_by(token=token).first()
+        if token:
+            return True
+        return False
