@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify, make_response, request, abort
+from flask import Blueprint, jsonify, make_response, request, abort, g
 
 from .. import db
 from ..models import BlacklistToken, User
+from ..middleware import jwt_required
 from .validators import validate_user_data
 
 
@@ -52,18 +53,9 @@ def register():
 
 
 @bp.route('/refresh', methods=['GET'])
+@jwt_required
 def refresh():
-    token = request.headers.get('Authorization')
-    if not token:
-        return jsonify({
-            'error': 'Missing authorization token.'
-        }), 401
-    parsedToken = User.decode_token(token)
-    if 'error' in parsedToken:
-        return jsonify({
-            'error': parsedToken['error']
-        }), 401
-    user = User.query.get(parsedToken['sub'])
+    user = User.query.get(g.user_id)
     token = user.encode_token()
     return jsonify({
         'token': token,
@@ -71,17 +63,9 @@ def refresh():
 
 
 @bp.route('/logout', methods=['GET'])
+@jwt_required
 def logout():
-    token = request.headers.get('Authorization')
-    if not token:
-        return jsonify({
-            'error': 'Missing authorization token.'
-        }), 401
-    parsedToken = User.decode_token(token)
-    if 'error' in parsedToken:
-        return jsonify({
-            'error': parsedToken['error']
-        }), 401
+    token = request.headers['Authorization']
     blacklist_token = BlacklistToken(token=token)
     db.session.add(blacklist_token)
     db.session.commit()
