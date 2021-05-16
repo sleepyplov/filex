@@ -82,5 +82,6 @@ def logout():
 def me():
     user = User.query.get(g.user_id)
     return jsonify({
+        'id': user.id,
         'name': user.name
     }), 200

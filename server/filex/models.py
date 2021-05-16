@@ -1,14 +1,16 @@
 import jwt
 import datetime
+import uuid
 
 from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.dialects.postgresql import UUID
 
 from . import db
 
 class User(db.Model):
     __tablename__ = 'users'
-    pk = db.Column(db.Integer, primary_key=True, nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(), unique=True, nullable=False)
     password = db.Column(db.String(), nullable=False)
 
@@ -17,7 +19,7 @@ class User(db.Model):
         self.password = generate_password_hash(password)
 
     def __repr__(self):
-        return '<User #{0} {1}>'.format(self.pk, self.name)
+        return '<User #{0} {1}>'.format(self.id, self.name)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -31,7 +33,7 @@ class User(db.Model):
         payload = {
             'exp': datetime.datetime.utcnow() + lifetime,
             'iat': datetime.datetime.utcnow(),
-            'sub': self.pk,
+            'sub': str(self.id),
             'type': type,
         }
         try:
@@ -72,7 +74,7 @@ class User(db.Model):
 class BlacklistToken(db.Model):
     __tablename__ = 'blacklist_tokens'
 
-    pk = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     token = db.Column(db.String, unique=True, nullable=False)
     blacklisted_on = db.Column(db.DateTime, nullable=True)
 
