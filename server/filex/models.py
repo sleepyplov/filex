@@ -25,25 +25,39 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password, password)
     
-    def encode_token(self):
+    def encode_token(self, refresh=False):
+        lifetime = datetime.timedelta(days=7) if refresh else datetime.timedelta(seconds=1800)
+        type = 'refresh' if refresh else 'access'
         payload = {
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=1800),
+            'exp': datetime.datetime.utcnow() + lifetime,
             'iat': datetime.datetime.utcnow(),
             'sub': self.pk,
+            'type': type,
         }
         try:
             return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
         except Exception as e:
             raise e # TODO: log errors
-    
+
     @staticmethod
-    def decode_token(token):
+    def decode_token(token: str, refresh=False):
+        allowed_types = ['access', 'refresh']
         try:
             if BlacklistToken.check_blacklist(token):
                 return {
                     'error': 'Token is blacklisted.'
                 }
-            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'], options={
+                'require': ['exp', 'iat', 'sub', 'type']
+            })
+            if payload['type'] not in allowed_types:
+                return {
+                    'error': 'Invalid token.',
+                }
+            if payload['type'] != 'refresh' and refresh:
+                return {
+                    'error': 'Invalid token.',
+                }
             return payload
         except jwt.ExpiredSignatureError:
             return {
@@ -70,7 +84,7 @@ class BlacklistToken(db.Model):
         return '<Token {}'.format(self.token)
     
     @staticmethod
-    def check_blacklist(token):
+    def check_blacklist(token: str):
         token = BlacklistToken.query.filter_by(token=token).first()
         if token:
             return True

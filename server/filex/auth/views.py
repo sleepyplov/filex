@@ -21,7 +21,8 @@ def login():
     user = User.query.filter_by(name=username).first()
     if user and user.check_password(password):
         return jsonify({
-            'token': user.encode_token()
+            'access_token': user.encode_token(),
+            'refresh_token': user.encode_token(refresh=True)
         }), 200
     return jsonify({
         'error': 'Invalid username or password'
@@ -52,8 +53,8 @@ def register():
     }), 201
 
 
-@bp.route('/refresh', methods=['GET'])
-@jwt_required
+@bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
 def refresh():
     user = User.query.get(g.user_id)
     token = user.encode_token()
@@ -62,11 +63,24 @@ def refresh():
     }), 200
 
 
-@bp.route('/logout', methods=['GET'])
-@jwt_required
+@bp.route('/logout', methods=['POST'])
+@jwt_required(refresh=True)
+@jwt_required()
 def logout():
-    token = request.headers['Authorization']
-    blacklist_token = BlacklistToken(token=token)
-    db.session.add(blacklist_token)
+    access_token = request.headers['Authorization']
+    blacklist_token = request.get_json()['refresh_token']
+    blacklist_access_token = BlacklistToken(token=access_token)
+    blacklist_refresh_token = BlacklistToken(token=blacklist_token)
+    db.session.add(blacklist_access_token)
+    db.session.add(blacklist_refresh_token)
     db.session.commit()
     return ('', 204)
+
+
+@bp.route('/me', methods=['GET'])
+@jwt_required()
+def me():
+    user = User.query.get(g.user_id)
+    return jsonify({
+        'name': user.name
+    }), 200
