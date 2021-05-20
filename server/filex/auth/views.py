@@ -15,7 +15,7 @@ def login():
     if 'error' in req_data:
         return jsonify({
             'error': req_data['error']
-        })
+        }), 400
     username = req_data['username']
     password = req_data['password']
     user = User.query.filter_by(name=username).first()
@@ -46,6 +46,7 @@ def register():
     user = User(username, password)
     db.session.add(user)
     db.session.commit()
+    user.init_folder()
     return jsonify({
         'user': {
             'name': user.name,

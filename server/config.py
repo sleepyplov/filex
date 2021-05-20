@@ -8,6 +8,7 @@ class Config(object):
     SECRET_KEY = 'secretkey'
     SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URI']
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    STORAGE_ROOT = os.environ['STORAGE_ROOT']
 
 
 class ProductionConfig(Config):

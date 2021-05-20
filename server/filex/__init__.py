@@ -13,7 +13,9 @@ db = SQLAlchemy(app)
 CORS(app)
 
 from .auth.views import bp as auth_bp
+from .storage.views import bp as storage_bp
 app.register_blueprint(auth_bp)
+app.register_blueprint(storage_bp)
 
 @app.route('/')
 def index():

@@ -1,7 +1,10 @@
+from posixpath import abspath
+from sys import path
 import jwt
 import datetime
-import uuid
+import pathlib
 
+import uuid
 from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.dialects.postgresql import UUID
@@ -20,6 +23,11 @@ class User(db.Model):
 
     def __repr__(self):
         return '<User #{0} {1}>'.format(self.id, self.name)
+    
+    def init_folder(self):
+        if not hasattr(self, 'id'):
+            raise AttributeError('This user has no id!') # TODO: log errors
+        pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).mkdir(exist_ok=False);
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -69,6 +77,11 @@ class User(db.Model):
             return {
                 'error': 'Invalid token.'
             }
+    
+    def is_allowed_path(self, path):
+        abspath = pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id), path).resolve()
+        user_home = pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).resolve()
+        return (user_home in abspath.parents) or (user_home == abspath)
 
 
 class BlacklistToken(db.Model):
