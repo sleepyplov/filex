@@ -56,8 +56,7 @@ def register():
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    user = User.query.get(g.user_id)
-    token = user.encode_token()
+    token = g.user.encode_token()
     return jsonify({
         'token': token,
     }), 200
@@ -80,8 +79,7 @@ def logout():
 @bp.route('/me', methods=['GET'])
 @jwt_required()
 def me():
-    user = User.query.get(g.user_id)
     return jsonify({
-        'id': user.id,
-        'name': user.name
+        'id': g.user.id,
+        'name': g.user.name
     }), 200

@@ -27,7 +27,7 @@ def jwt_required(refresh=False):
                 return jsonify({
                     'error': parsedToken['error']
                 }), 401
-            g.user_id = parsedToken['sub']
+            g.user = User.query.get(parsedToken['sub'])
             return view(*args, **kwargs)
         return wrapper
     return _jwt_required
