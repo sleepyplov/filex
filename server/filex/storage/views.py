@@ -17,17 +17,8 @@ def get_folder():
     if 'error' in req_data:
         return jsonify({
             'error': req_data['error']
-        }), 400
+        }), req_data['status']
     path = req_data['path']
-    if not g.user.is_allowed_path(path):
-        return jsonify({
-            'error': 'Not allowed location.'
-        }), 403
-    path = Path(current_app.config['STORAGE_ROOT']).joinpath(str(g.user.id), path).resolve()
-    if not (path.exists() and path.is_dir()):
-        return jsonify({
-            'error': 'Folder not found.'
-        }), 404
     files = []
     folders = []
     for item in path.iterdir(): # TODO: refactor config usage and paths formation
