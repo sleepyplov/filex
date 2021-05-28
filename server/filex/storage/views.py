@@ -12,8 +12,8 @@ bp = Blueprint('storage', __name__, url_prefix='/storage')
 
 @bp.route('/dir', methods=['GET'])
 @jwt_required()
-def get_folder():
-    req_data = validate_folder_request()
+def list_dir():
+    req_data = validate_folder_request(query=True)
     if 'error' in req_data:
         return jsonify({
             'error': req_data['error']
@@ -30,4 +30,25 @@ def get_folder():
         'files': files,
         'folders': folders
     }), 200
+
+@bp.route('/dir', methods=['POST'])
+@jwt_required()
+def make_dir():
+    req_data = validate_folder_request(must_exist=False)
+    if 'error' in req_data:
+        return jsonify({
+            'error': req_data['error'],
+        }), req_data['status']
+    path: Path = req_data['path']
+    try:
+        path.mkdir()
+        return jsonify({
+            'dir': path.stat() # TODO: return only needed fields
+        }), 201
+    except OSError as e:
+        # TODO: log errors
+        print(e)
+        return jsonify({
+            'error': 'Failed to create folder.',
+        }), 500
     

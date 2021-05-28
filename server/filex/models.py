@@ -79,9 +79,8 @@ class User(db.Model):
             }
     
     def is_allowed_path(self, path):
-        abspath = pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id), path).resolve()
         user_home = pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).resolve()
-        return (user_home in abspath.parents) or (user_home == abspath)
+        return (user_home in path.parents) or (user_home == path)
 
 
 class BlacklistToken(db.Model):
