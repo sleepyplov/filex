@@ -1,11 +1,9 @@
-from posixpath import abspath
-from sys import path
 import jwt
 import datetime
 import pathlib
 
 import uuid
-from flask import current_app
+from flask import current_app, abort, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -26,7 +24,7 @@ class User(db.Model):
     
     def init_folder(self):
         if not hasattr(self, 'id'):
-            raise AttributeError('This user has no id!') # TODO: log errors
+            raise AttributeError('This user has no id! Save to database to get id.')
         pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).mkdir(exist_ok=False);
 
     def set_password(self, password):
@@ -47,7 +45,10 @@ class User(db.Model):
         try:
             return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
         except Exception as e:
-            raise e # TODO: log errors
+            current_app.logger.critical('Failed to encode token for user %(user)s, error = %(error)s', self, e)
+            abort(make_response(jsonify({
+                'error': 'Server error, authentication failed.',
+            }), 500))
 
     @staticmethod
     def decode_token(token: str, refresh=False):
@@ -77,6 +78,9 @@ class User(db.Model):
             return {
                 'error': 'Invalid token.'
             }
+    
+    def get_home_path(self):
+        return pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).resolve()
     
     def is_allowed_path(self, path):
         user_home = pathlib.Path(current_app.config['STORAGE_ROOT']).joinpath(str(self.id)).resolve()

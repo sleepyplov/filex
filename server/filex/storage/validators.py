@@ -1,36 +1,35 @@
 import os
 from pathlib import Path
 
-from flask import request, current_app, g
+from flask import request, current_app, g, make_response, abort
+from flask.json import jsonify
 
 
-def validate_folder_request(query=False, must_exist=True):
-    req_data = request.args if query else request.get_json()
+def get_requested_path(json=False):
+    req_data = request.get_json() if json else request.args
     if not req_data:
-        return {
-            'error': 'Bad request.',
-            'status': 400,
-        }
+        abort(make_response(jsonify({
+            'error': 'Bad request.'
+        }), 400))
     if not (type(req_data.get('path')) is str):
-        return {
+        abort(make_response(jsonify({
             'error': 'Path invalid or not provided.',
-            'status': 400,
-        }
+        }), 400))
+    return req_data['path']
 
-    path = Path(current_app.config['STORAGE_ROOT']).joinpath(str(g.user.id), req_data['path']).resolve()
+
+def validate_folder_request(path, must_exist=True):
+    path = Path(current_app.config['STORAGE_ROOT']).joinpath(str(g.user.id), path).resolve()
     if not g.user.is_allowed_path(path):
-        return {
+        abort(make_response(jsonify({
             'error': 'Not allowed location.',
-            'status': 403,
-        }
+        }), 403))
     if must_exist and not (path.exists() and path.is_dir()):
-        return {
-            'error': 'No such folder.',
-            'status': 404,
-        }
+        abort(make_response(jsonify({
+            'error': 'Folder not found.',
+        }), 404))
     if not must_exist and path.exists():
-        return {
-            'error': 'This folder already exists',
-            'status': 409,
-        }
-    return {**req_data, 'path': path}
+        abort(make_response(jsonify({
+            'error': 'This folder already exists.'
+        }), 409))
+    return path
