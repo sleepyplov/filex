@@ -13,7 +13,7 @@ bp = Blueprint('storage', __name__, url_prefix='/storage')
 
 
 @bp.route('/dir', methods=['GET'])
-@jwt_required()
+@jwt_required
 def list_dir():
     path = validate_folder_request(get_requested_path())
     files = []
@@ -30,7 +30,7 @@ def list_dir():
 
 
 @bp.route('/dir', methods=['POST'])
-@jwt_required()
+@jwt_required
 def make_dir():
     path = validate_folder_request(get_requested_path(), must_exist=False)
     try:
@@ -46,7 +46,7 @@ def make_dir():
 
 
 @bp.route('/dir', methods=['DELETE'])
-@jwt_required()
+@jwt_required
 def delete_dir():
     path = validate_folder_request(get_requested_path())
     if path == g.user.get_home_path():
@@ -64,7 +64,7 @@ def delete_dir():
 
 
 @bp.route('/dir', methods=['PUT'])
-@jwt_required()
+@jwt_required
 def move_dir():
     src_path = validate_folder_request(get_requested_path())
     dst_path = validate_folder_request(get_requested_path(json=True), must_exist=False)

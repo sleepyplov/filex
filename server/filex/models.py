@@ -11,9 +11,11 @@ from . import db
 
 class User(db.Model):
     __tablename__ = 'users'
+
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(), unique=True, nullable=False)
     password = db.Column(db.String(), nullable=False)
+    tokens = db.relationship('RefreshToken')
 
     def __init__(self, name, password):
         self.name = name
@@ -33,17 +35,20 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password, password)
     
-    def encode_token(self, refresh=False):
-        lifetime = datetime.timedelta(days=7) if refresh else datetime.timedelta(seconds=1800)
-        type = 'refresh' if refresh else 'access'
-        payload = {
-            'exp': datetime.datetime.utcnow() + lifetime,
+    def issue_token_pair(self):
+        try:
+            at_payload = {
+            'exp': datetime.datetime.utcnow() + current_app.config['ACCESS_TOKEN_LIFETIME'],
             'iat': datetime.datetime.utcnow(),
             'sub': str(self.id),
-            'type': type,
-        }
-        try:
-            return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
+            }
+            refresh_token = RefreshToken(self.id)
+            db.session.add(refresh_token)
+            db.session.commit()
+            return {
+                'access_token': jwt.encode(at_payload, current_app.config['SECRET_KEY'], algorithm='HS256'),
+                'refresh_token': str(refresh_token.id)
+            }
         except Exception as e:
             current_app.logger.critical('Failed to encode token for user %(user)s, error = %(error)s', self, e)
             abort(make_response(jsonify({
@@ -51,25 +56,11 @@ class User(db.Model):
             }), 500))
 
     @staticmethod
-    def decode_token(token: str, refresh=False):
-        allowed_types = ['access', 'refresh']
+    def decode_token(token: str):
         try:
-            if BlacklistToken.check_blacklist(token):
-                return {
-                    'error': 'Token is blacklisted.'
-                }
-            payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'], options={
-                'require': ['exp', 'iat', 'sub', 'type']
+            return jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'], options={
+                'require': ['exp', 'iat', 'sub',]
             })
-            if payload['type'] not in allowed_types:
-                return {
-                    'error': 'Invalid token.',
-                }
-            if payload['type'] != 'refresh' and refresh:
-                return {
-                    'error': 'Invalid token.',
-                }
-            return payload
         except jwt.ExpiredSignatureError:
             return {
                 'error': 'Token expired.'
@@ -87,23 +78,16 @@ class User(db.Model):
         return (user_home in path.parents) or (user_home == path)
 
 
-class BlacklistToken(db.Model):
-    __tablename__ = 'blacklist_tokens'
+class RefreshToken(db.Model):
+    __tablename__ = 'tokens'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    token = db.Column(db.String, unique=True, nullable=False)
-    blacklisted_on = db.Column(db.DateTime, nullable=True)
+    iat = db.Column(db.DateTime, nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
 
-    def __init__(self, token):
-        self.token = token
-        self.blacklisted_on = datetime.datetime.now()
-    
+    def __init__(self, user_id):
+        self.iat = datetime.datetime.now()
+        self.user_id = user_id
+
     def __repr__(self):
-        return '<Token {}'.format(self.token)
-    
-    @staticmethod
-    def check_blacklist(token: str):
-        token = BlacklistToken.query.filter_by(token=token).first()
-        if token:
-            return True
-        return False
+        return '<Token {0}, iat: {1}'.format(self.id, self.iat)

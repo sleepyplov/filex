@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, make_response, request, abort, g
 
 from .. import db
-from ..models import BlacklistToken, User
-from ..middleware import jwt_required
+from ..models import User
+from ..middleware import jwt_required, refresh_required
 from .validators import validate_user_data
 
 
@@ -20,10 +20,7 @@ def login():
     password = req_data['password']
     user = User.query.filter_by(name=username).first()
     if user and user.check_password(password):
-        return jsonify({
-            'access_token': user.encode_token(),
-            'refresh_token': user.encode_token(refresh=True)
-        }), 200
+        return jsonify(user.issue_token_pair()), 200
     return jsonify({
         'error': 'Invalid username or password'
     }), 401
@@ -49,36 +46,32 @@ def register():
     user.init_folder()
     return jsonify({
         'user': {
+            'id': user.id,
             'name': user.name,
         }
     }), 201
 
 
 @bp.route('/refresh', methods=['POST'])
-@jwt_required(refresh=True)
+@refresh_required
 def refresh():
-    token = g.user.encode_token()
-    return jsonify({
-        'token': token,
-    }), 200
+    g.user.tokens.remove(g.refresh_token)
+    db.session.add(g.user)
+    db.session.commit()
+    return jsonify(g.user.issue_token_pair()), 200
 
 
 @bp.route('/logout', methods=['POST'])
-@jwt_required(refresh=True)
-@jwt_required()
+@jwt_required
 def logout():
-    access_token = request.headers['Authorization']
-    blacklist_token = request.get_json()['refresh_token']
-    blacklist_access_token = BlacklistToken(token=access_token)
-    blacklist_refresh_token = BlacklistToken(token=blacklist_token)
-    db.session.add(blacklist_access_token)
-    db.session.add(blacklist_refresh_token)
-    db.session.commit()
+    g.user.tokens.clear()
+    db.session.add(g.user)
+    db.session.commit(g.user)
     return ('', 204)
 
 
 @bp.route('/me', methods=['GET'])
-@jwt_required()
+@jwt_required
 def me():
     return jsonify({
         'id': g.user.id,
