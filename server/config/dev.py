@@ -1,3 +1,3 @@
-ENV = 'development'
-DEVELOPMENT = True
-DEBUG = True
+import os
+
+SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URI']
