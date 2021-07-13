@@ -19,7 +19,10 @@ def login():
     username = req_data['username']
     password = req_data['password']
     user = User.query.filter_by(name=username).first()
+    print(password)
+    print(user.check_password(password))
     if user and user.check_password(password):
+        print('login')
         return jsonify(user.issue_token_pair()), 200
     return jsonify({
         'error': 'Invalid username or password'
@@ -74,6 +77,8 @@ def logout():
 @jwt_required
 def me():
     return jsonify({
-        'id': g.user.id,
-        'name': g.user.name
+        'user':{
+            'id': g.user.id,
+            'name': g.user.name
+        }
     }), 200
