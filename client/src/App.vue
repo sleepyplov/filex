@@ -1,26 +1,35 @@
 <template>
-  <router-view />
+  <div class="wrapper">
+    <div class="wrapper__inner">
+      <router-view />
+    </div>
+  </div>
 </template>
 
 <style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+body {
+  margin: 0;
 }
-
-#nav {
-  padding: 30px;
-
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
+.wrapper {
+  width: 100%;
+  height: 100vh;
+  background: colors.$f-grey;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  &__inner {
+    width: 100%;
+    height: 100%;
+    max-width: 1280px;
+    // background: $f-dark;
+    margin: 0 auto;
+    padding-top: 7px;
+    box-sizing: border-box;
+  }
+}
+@media screen and (max-width: 1279px) {
+  .wrapper {
+    padding: 7px;
+    box-sizing: border-box;
   }
 }
 </style>
